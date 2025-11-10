@@ -178,11 +178,9 @@
 
     // Generate terrain height using noise
     function getHeight(x, z) {
-      // Scale coordinates for noise
       const scale = 0.1;
       const noiseVal = simplex.noise2D(x * scale, z * scale);
-      // Normalize noiseVal from [-1,1] to [0,1], then scale height
-      return Math.floor((noiseVal + 1) / 2 * 3) + 1; // heights 1 to 4
+      return Math.floor((noiseVal + 1) / 2 * 3) + 1;
     }
 
     // Generate a chunk at chunk coords cx, cz
@@ -197,7 +195,6 @@
           const worldZ = startZ + z;
           const height = getHeight(worldX, worldZ);
 
-          // Ground layers
           for(let y = 0; y <= height; y++) {
             let type = 'dirt';
             if (y === height) type = 'grass';
@@ -206,8 +203,7 @@
             chunkBlocks.push(blocks.get(blockKey(worldX, y, worldZ)));
           }
 
-          // Randomly spawn trees on grass blocks
-          if (Math.random() < 0.05) { // 5% chance per block
+          if (Math.random() < 0.05) {
             createTree(worldX, height + 1, worldZ, chunkBlocks);
           }
         }
@@ -254,7 +250,6 @@
         }
       }
 
-      // Remove chunks no longer needed
       for (let key of chunks.keys()) {
         if (!neededChunks.has(key)) {
           const [cx, cz] = key.split(',').map(Number);
@@ -293,7 +288,6 @@
         const block = findBlockByMesh(intersected);
 
         if (block) {
-          // Only allow digging grass blocks for now
           if (block.type === 'grass') {
             replaceBlock(block, 'stone');
           }
@@ -351,16 +345,16 @@
       renderer.render(scene, camera);
     }
 
-    // Reset world data and start infinite terrain
+    // Fix applied here: call updateChunks immediately after resetting world and player position
     function createWorld() {
-      // Remove all blocks
       blocks.forEach(({mesh}) => scene.remove(mesh));
       blocks.clear();
       chunks.clear();
 
-      // Reset player position
       camera.position.set(0, 10, 0);
       controls.getObject().position.copy(camera.position);
+
+      updateChunks(); // <-- Important: load initial chunks immediately
     }
 
     // Initialization
