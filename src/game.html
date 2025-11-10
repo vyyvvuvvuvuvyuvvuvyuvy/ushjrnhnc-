@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Minecraft</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #1e1e1e;
+      font-family: 'Arial', sans-serif;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+    .menu {
+      text-align: center;
+    }
+    .menu h1 {
+      font-size: 4rem;
+      font-weight: bold;
+      margin-bottom: 2rem;
+      font-family: 'Minecraft', monospace, monospace;
+      color: #4caf50;
+      text-shadow: 2px 2px 4px #000;
+    }
+    .button {
+      background-color: #4caf50;
+      border: none;
+      padding: 1rem 2rem;
+      font-size: 1.5rem;
+      cursor: pointer;
+      border-radius: 8px;
+      color: #fff;
+      transition: background-color 0.3s ease;
+    }
+    .button:hover {
+      background-color: #388e3c;
+    }
+  </style>
+</head>
+<body>
+  <div class="menu">
+    <h1>Minecraft</h1>
+    <button class="button" id="createWorldBtn">Create World</button>
+  </div>
+</body>
+</html>
