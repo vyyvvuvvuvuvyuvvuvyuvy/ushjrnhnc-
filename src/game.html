@@ -7,63 +7,326 @@
   <style>
     body {
       margin: 0;
-      font-family: 'Arial', sans-serif;
-      color: #fff;
-      height: 100vh;
       overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      position: relative;
-      z-index: 0;
+      font-family: Arial, sans-serif;
+      background-color: #87ceeb; /* fallback sky blue */
+      cursor: crosshair;
     }
-    /* Background image placeholder */
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background-image: url('file:///home/chronos/u-407a8bb13f967b769fdc402946d2fdcd323b860a/MyFiles/Downloads/background.jpeg');
-      background-size: cover;
-      background-position: center;
-      filter: brightness(0.6);
-      z-index: -1;
-    }
-    .menu {
+    #menu {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
       text-align: center;
-      z-index: 1;
+      color: white;
+      text-shadow: 1px 1px 3px black;
+      user-select: none;
     }
-    .menu h1 {
-      font-size: 4rem;
-      font-weight: bold;
-      margin-bottom: 2rem;
-      font-family: 'Minecraft', monospace, monospace;
+    #menu h1 {
+      font-size: 3rem;
+      margin: 0 0 10px;
       color: #4caf50;
-      text-shadow: 2px 2px 4px #000;
     }
-    .button {
-      background-color: #4caf50;
+    #createWorldBtn {
+      font-size: 1.2rem;
+      padding: 10px 20px;
       border: none;
-      padding: 1rem 2rem;
-      font-size: 1.5rem;
-      cursor: pointer;
       border-radius: 8px;
-      color: #fff;
+      background-color: #4caf50;
+      color: white;
+      cursor: pointer;
       transition: background-color 0.3s ease;
     }
-    .button:hover {
+    #createWorldBtn:hover {
       background-color: #388e3c;
+    }
+    #instructions {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      text-align: center;
+      color: white;
+      font-size: 1rem;
+      text-shadow: 1px 1px 3px black;
+      user-select: none;
+      z-index: 10;
+    }
+    canvas {
+      display: block;
     }
   </style>
 </head>
 <body>
-  <div class="menu">
+  <div id="menu">
     <h1>Minecraft</h1>
-    <button class="button" id="createWorldBtn">Create World</button>
+    <button id="createWorldBtn">Create World</button>
   </div>
+  <div id="instructions">
+    Click on the canvas to lock mouse and control camera. Use WASD to move.
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/PointerLockControls.js"></script>
+  <script>
+    let scene, camera, renderer;
+    let controls;
+    let blocks = [];
+    const blockSize = 1;
+    const worldSize = 20; // 20x20 blocks ground
+    const treeCount = 30;
+
+    // Movement variables
+    const move = { forward: false, backward: false, left: false, right: false };
+    let velocity = new THREE.Vector3();
+    const speed = 5; // blocks per second
+
+    // Geometry
+    const cubeGeometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+
+    // Textures URLs you provided
+    const textureURLs = {
+      dirt: 'https://protoinfrastack.ivondy.com/media/agYI9SMxqBwFj8qNVD9ur5t5KRgrC5s1RCc0',
+      wood: 'https://protoinfrastack.ivondy.com/media/ksvRf2rUmXAwQZBqbCdZDQ9a20C7y7NQOvT9',
+      leaves: 'https://protoinfrastack.ivondy.com/media/KNBCA1pHmXJaefhA8gCOr5S9oDJdMpq5MTlL',
+      grass: 'https://protoinfrastack.ivondy.com/media/MM4IZLXA8a2PjVeOVfw1K3mZ8TDbaLTcNPJr',
+      stone: 'https://protoinfrastack.ivondy.com/media/HlWZFzA92NXgqP3V3LxXV0ca3QyUEKzmjhuo'
+    };
+
+    // Materials will be initialized after textures load
+    const materials = {};
+
+    const loader = new THREE.TextureLoader();
+
+    // Load textures and set pixelated style
+    function loadTexture(url) {
+      const tex = loader.load(url);
+      tex.magFilter = THREE.NearestFilter;
+      tex.minFilter = THREE.NearestFilter;
+      return tex;
+    }
+
+    function initMaterials() {
+      materials.dirt = new THREE.MeshLambertMaterial({ map: loadTexture(textureURLs.dirt) });
+      materials.wood = new THREE.MeshLambertMaterial({ map: loadTexture(textureURLs.wood) });
+      materials.leaves = new THREE.MeshLambertMaterial({ map: loadTexture(textureURLs.leaves), transparent: true });
+      materials.grass = new THREE.MeshLambertMaterial({ map: loadTexture(textureURLs.grass) });
+      materials.stone = new THREE.MeshLambertMaterial({ map: loadTexture(textureURLs.stone) });
+    }
+
+    function init() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x87ceeb); // sky blue
+
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(worldSize / 2, 2, worldSize / 2);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      controls = new THREE.PointerLockControls(camera, document.body);
+
+      // Clicking on canvas locks pointer
+      document.body.addEventListener('click', () => {
+        controls.lock();
+      });
+
+      // Lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(10, 20, 10);
+      scene.add(directionalLight);
+
+      window.addEventListener('resize', onWindowResize, false);
+      renderer.domElement.addEventListener('pointerdown', onPointerDown);
+
+      // Keyboard events
+      document.addEventListener('keydown', onKeyDown);
+      document.addEventListener('keyup', onKeyUp);
+    }
+
+    // Clear current blocks from scene
+    function clearWorld() {
+      blocks.forEach(block => scene.remove(block.mesh));
+      blocks = [];
+    }
+
+    // Create ground blocks (grass on top, dirt below)
+    function createGround() {
+      for (let x = 0; x < worldSize; x++) {
+        for (let z = 0; z < worldSize; z++) {
+          // Grass block at y=0
+          addBlock(x, 0, z, 'grass');
+          // Dirt block below at y=-1
+          addBlock(x, -1, z, 'dirt');
+        }
+      }
+    }
+
+    // Add a block at grid position with type
+    function addBlock(x, y, z, type) {
+      let material = materials[type] || materials.grass;
+      const mesh = new THREE.Mesh(cubeGeometry, material);
+      mesh.position.set(x * blockSize, y * blockSize, z * blockSize);
+      scene.add(mesh);
+
+      const block = { x, y, z, type, mesh };
+      blocks.push(block);
+      return block;
+    }
+
+    // Generate random forest trees
+    function generateTrees() {
+      let placed = 0;
+      while (placed < treeCount) {
+        const x = Math.floor(Math.random() * worldSize);
+        const z = Math.floor(Math.random() * worldSize);
+
+        // Avoid placing trees on the edge for better appearance
+        if (x < 2 || x > worldSize - 3 || z < 2 || z > worldSize - 3) continue;
+
+        // Avoid overlapping trees (check if block at x,z is grass)
+        const block = blocks.find(b => b.x === x && b.z === z && b.y === 0 && b.type === 'grass');
+        if (!block) continue;
+
+        createTree(x, 1, z);
+        placed++;
+      }
+    }
+
+    // Create a simple tree at (x,y,z)
+    function createTree(x, y, z) {
+      // Trunk height randomly 3-5 blocks
+      const trunkHeight = 3 + Math.floor(Math.random() * 3);
+
+      // Create trunk (wood blocks)
+      for (let i = 0; i < trunkHeight; i++) {
+        addBlock(x, y + i, z, 'wood');
+      }
+
+      // Create leaves cube on top (3x3x3)
+      const leafStartY = y + trunkHeight;
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = 0; dy <= 2; dy++) {
+          for (let dz = -1; dz <= 1; dz++) {
+            // Skip center bottom (to avoid leaves inside trunk)
+            if (dx === 0 && dy === 0 && dz === 0) continue;
+            addBlock(x + dx, leafStartY + dy, z + dz, 'leaves');
+          }
+        }
+      }
+    }
+
+    // Find block by mesh
+    function findBlockByMesh(mesh) {
+      return blocks.find(b => b.mesh === mesh);
+    }
+
+    // Replace block type and update material
+    function replaceBlock(block, newType) {
+      block.type = newType;
+      block.mesh.material = materials[newType] || materials.grass;
+    }
+
+    // Digging mechanic: click grass block -> replace with stone block
+    function onPointerDown(event) {
+      event.preventDefault();
+      if (!controls.isLocked) return;
+
+      const mouse = new THREE.Vector2();
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+
+      const intersects = raycaster.intersectObjects(blocks.map(b => b.mesh));
+      if (intersects.length > 0) {
+        const intersected = intersects[0].object;
+        const block = findBlockByMesh(intersected);
+
+        if (block) {
+          // Only allow digging grass blocks for now
+          if (block.type === 'grass') {
+            replaceBlock(block, 'stone');
+          }
+        }
+      }
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function onKeyDown(event) {
+      switch (event.code) {
+        case 'KeyW': move.forward = true; break;
+        case 'KeyS': move.backward = true; break;
+        case 'KeyA': move.left = true; break;
+        case 'KeyD': move.right = true; break;
+      }
+    }
+
+    function onKeyUp(event) {
+      switch (event.code) {
+        case 'KeyW': move.forward = false; break;
+        case 'KeyS': move.backward = false; break;
+        case 'KeyA': move.left = false; break;
+        case 'KeyD': move.right = false; break;
+      }
+    }
+
+    let prevTime = performance.now();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (controls.isLocked) {
+        const time = performance.now();
+        const delta = (time - prevTime) / 1000;
+
+        velocity.set(0, 0, 0);
+        if (move.forward) velocity.z -= speed * delta;
+        if (move.backward) velocity.z += speed * delta;
+        if (move.left) velocity.x -= speed * delta;
+        if (move.right) velocity.x += speed * delta;
+
+        // Move controls in the direction camera is facing
+        controls.moveRight(velocity.x);
+        controls.moveForward(velocity.z);
+
+        prevTime = time;
+      } else {
+        prevTime = performance.now();
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    function createWorld() {
+      clearWorld();
+      createGround();
+      generateTrees();
+
+      // Reset camera position and controls
+      camera.position.set(worldSize / 2, 2, worldSize / 2);
+      controls.getObject().position.copy(camera.position);
+    }
+
+    // Initialize materials first, then init scene and animate
+    initMaterials();
+    init();
+    animate();
+
+    document.getElementById('createWorldBtn').addEventListener('click', () => {
+      createWorld();
+    });
+  </script>
 </body>
 </html>
-
