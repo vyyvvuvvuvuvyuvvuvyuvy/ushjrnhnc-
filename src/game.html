@@ -7,17 +7,34 @@
   <style>
     body {
       margin: 0;
-      background-color: #1e1e1e;
       font-family: 'Arial', sans-serif;
       color: #fff;
+      height: 100vh;
+      overflow: hidden;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
       flex-direction: column;
+      position: relative;
+      z-index: 0;
+    }
+    /* Background image placeholder */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-image: url('https://via.placeholder.com/1920x1080?text=Background+Image');
+      background-size: cover;
+      background-position: center;
+      filter: brightness(0.6);
+      z-index: -1;
     }
     .menu {
       text-align: center;
+      z-index: 1;
     }
     .menu h1 {
       font-size: 4rem;
@@ -49,3 +66,4 @@
   </div>
 </body>
 </html>
+
